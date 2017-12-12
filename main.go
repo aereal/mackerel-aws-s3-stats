@@ -14,8 +14,10 @@ import (
 )
 
 type options struct {
-	buckets []string
-	region  string
+	buckets         []string
+	region          string
+	noPost          bool
+	mackerelService string
 }
 
 type bucketFlags []string
@@ -34,12 +36,20 @@ func (f *bucketFlags) Set(value string) error {
 }
 
 func parseOptions() (*options, error) {
-	var buckets bucketFlags
+	var (
+		buckets         bucketFlags
+		noPost          bool
+		mackerelService string
+	)
 	flag.Var(&buckets, "bucket", "bucket name")
 	region := flag.String("region", "", "region name")
+	flag.BoolVar(&noPost, "no-post", false, "do not post metrics to mackerel")
+	flag.StringVar(&mackerelService, "service", "", "service name on Mackerel")
 	flag.Parse()
 
 	opts := &options{}
+	opts.noPost = noPost
+
 	if len(buckets) == 0 {
 		return nil, fmt.Errorf("bucket required")
 	}
@@ -52,6 +62,11 @@ func parseOptions() (*options, error) {
 		return nil, fmt.Errorf("region required")
 	}
 	opts.region = *region
+
+	if !opts.noPost && mackerelService == "" {
+		return nil, fmt.Errorf("service required")
+	}
+	opts.mackerelService = mackerelService
 
 	return opts, nil
 }
@@ -68,6 +83,9 @@ func main() {
 	}
 	for _, m := range metrics {
 		fmt.Fprintf(os.Stdout, "%s\t%d\t%d\n", m.Name, m.Value, m.Time)
+	}
+	if !opts.noPost {
+		postMetricsToMackerel(opts.mackerelService, metrics)
 	}
 }
 
@@ -120,4 +138,15 @@ func fetchS3MetricsByBucket(s *session.Session, bucket string) ([]*mkr.MetricVal
 		Time:  ts.Unix(),
 	})
 	return metrics, nil
+}
+
+func postMetricsToMackerel(service string, metrics []*mkr.MetricValue) error {
+	apiKey := os.Getenv("MACKEREL_APIKEY")
+	if apiKey == "" {
+		return fmt.Errorf("MACKEREL_APIKEY required")
+	}
+
+	client := mkr.NewClient(apiKey)
+	err := client.PostServiceMetricValues(service, metrics)
+	return err
 }

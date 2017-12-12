@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	session "github.com/aws/aws-sdk-go/aws/session"
 	s3 "github.com/aws/aws-sdk-go/service/s3"
 	mkr "github.com/mackerelio/mackerel-client-go"
@@ -75,13 +74,9 @@ func main() {
 func fetchS3Metrics(opts *options) ([]*mkr.MetricValue, error) {
 	metrics := make([]*mkr.MetricValue, 0)
 
-	cre := credentials.NewEnvCredentials()
 	s, err := session.NewSession(&aws.Config{
-		Credentials: cre,
-		Region:      &opts.region,
+		Region: &opts.region,
 	})
-	// opts := session.Options{}
-	// s, err := session.NewSessionWithOptions(opts)
 	if err != nil {
 		return metrics, err
 	}

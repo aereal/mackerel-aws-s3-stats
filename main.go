@@ -19,19 +19,32 @@ type options struct {
 	region  string
 }
 
+type bucketFlags []string
+
+func (f *bucketFlags) String() string {
+	buf := ""
+	for _, b := range *f {
+		buf += b
+	}
+	return buf
+}
+
+func (f *bucketFlags) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
 func parseOptions() (*options, error) {
-	bucket := flag.String("bucket", "", "bucket name")
+	var buckets bucketFlags
+	flag.Var(&buckets, "bucket", "bucket name")
 	region := flag.String("region", "", "region name")
 	flag.Parse()
 
 	opts := &options{}
-	if bucket == nil {
+	if len(buckets) == 0 {
 		return nil, fmt.Errorf("bucket required")
 	}
-	if b := *bucket; b == "" {
-		return nil, fmt.Errorf("bucket required")
-	}
-	opts.buckets = []string{*bucket}
+	opts.buckets = buckets
 
 	if region == nil {
 		return nil, fmt.Errorf("region required")

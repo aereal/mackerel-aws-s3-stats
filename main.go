@@ -115,12 +115,12 @@ func fetchS3MetricsByBucket(s *session.Session, bucket string) ([]*mkr.MetricVal
 	}
 	ts := time.Now()
 	metrics = append(metrics, &mkr.MetricValue{
-		Name:  "objects_count." + bucket,
+		Name:  "s3_objects_count." + bucket,
 		Value: len(out.Contents),
 		Time:  ts.Unix(),
 	})
 	metrics = append(metrics, &mkr.MetricValue{
-		Name:  "total_size." + bucket,
+		Name:  "s3_total_size." + bucket,
 		Value: totalSize,
 		Time:  ts.Unix(),
 	})

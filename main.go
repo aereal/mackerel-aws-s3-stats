@@ -15,8 +15,8 @@ import (
 )
 
 type options struct {
-	bucket string
-	region string
+	buckets []string
+	region  string
 }
 
 func parseOptions() (*options, error) {
@@ -31,7 +31,7 @@ func parseOptions() (*options, error) {
 	if b := *bucket; b == "" {
 		return nil, fmt.Errorf("bucket required")
 	}
-	opts.bucket = *bucket
+	opts.buckets = []string{*bucket}
 
 	if region == nil {
 		return nil, fmt.Errorf("region required")
@@ -73,8 +73,23 @@ func fetchS3Metrics(opts *options) ([]*mkr.MetricValue, error) {
 		return metrics, err
 	}
 
+	for _, b := range opts.buckets {
+		ms, er := fetchS3MetricsByBucket(s, b)
+		if er != nil {
+			log.Printf("! Error on bucket %s: %s\n", b, er)
+			continue
+		}
+		metrics = append(metrics, ms...)
+	}
+
+	return metrics, err
+}
+
+func fetchS3MetricsByBucket(s *session.Session, bucket string) ([]*mkr.MetricValue, error) {
+	metrics := make([]*mkr.MetricValue, 0)
+
 	srv := s3.New(s)
-	out, err := srv.ListObjects(&s3.ListObjectsInput{Bucket: &opts.bucket})
+	out, err := srv.ListObjects(&s3.ListObjectsInput{Bucket: &bucket})
 	if err != nil {
 		return metrics, err
 	}
@@ -87,12 +102,12 @@ func fetchS3Metrics(opts *options) ([]*mkr.MetricValue, error) {
 	}
 	ts := time.Now()
 	metrics = append(metrics, &mkr.MetricValue{
-		Name:  "objects_count." + opts.bucket,
+		Name:  "objects_count." + bucket,
 		Value: len(out.Contents),
 		Time:  ts.Unix(),
 	})
 	metrics = append(metrics, &mkr.MetricValue{
-		Name:  "total_size." + opts.bucket,
+		Name:  "total_size." + bucket,
 		Value: totalSize,
 		Time:  ts.Unix(),
 	})
